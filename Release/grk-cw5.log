@@ -1,0 +1,42 @@
+﻿  Camera.cpp
+  main.cpp
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(245,11): warning C4244: "inicjowanie": konwersja z "int" do "float", możliwa utrata danych
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(263,20): warning C4244: "inicjowanie": konwersja z "float" do "int", możliwa utrata danych
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(281,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(282,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(283,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(284,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(289,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(290,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(291,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(297,20): warning C4244: "inicjowanie": konwersja z "float" do "int", możliwa utrata danych
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(318,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(319,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(320,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(321,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(326,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(327,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(328,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(337,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(338,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(343,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(344,1): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(418,61): warning C4244: "argument": konwersja z "double" do "const float", możliwa utrata danych
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(418,106): warning C4244: "argument": konwersja z "double" do "const float", możliwa utrata danych
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(605,20): warning C4244: "=": konwersja z "double" do "float", możliwa utrata danych
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(639,74): warning C4305: "argument": obcięcie z "double" do "float"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(710,154): warning C4305: "argument": obcięcie z "double" do "float"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(712,36): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(715,37): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(717,15): warning C4244: "inicjowanie": konwersja z "float" do "int", możliwa utrata danych
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\main.cpp(725,48): warning C4305: "argument": obcięcie z "double" do "GLfloat"
+  picopng.cpp
+  Render_Utils.cpp
+  Shader_Loader.cpp
+  Texture.cpp
+C:\Users\sarkow1\Desktop\spaceship-simulator\src\Texture.cpp(32,21): warning C4018: "<": niezgodność typu ze znakiem/bez znaku
+  Trwa generowanie kodu
+  Previous IPDB not found, fall back to full compilation.
+  All 1331 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Zakończono generowanie kodu
+  grk-cw5.vcxproj -> C:\Users\sarkow1\Desktop\spaceship-simulator\Release\Spaceship-simulator.exe
