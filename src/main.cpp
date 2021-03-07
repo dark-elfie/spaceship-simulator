@@ -14,6 +14,10 @@
 #include "Render_Utils.h"	//
 #include "Camera.h"			//
 
+#include "Spaceship.h"
+#include "Player.h"
+#include "HUD.h"
+
 GLuint program;
 GLuint programSun;
 GLuint programTex;
@@ -54,8 +58,8 @@ float frustumScale = 1.1f;
 float cameraAngle = 0;
 float shipAngle;
 glm::vec3 cameraPos = glm::vec3(-30, 0, 0);
-glm::vec3 cameraDir; // Wektor "do przodu" kamery
-glm::vec3 cameraSide; // Wektor "w bok" kamery
+glm::vec3 cameraDir;
+glm::vec3 cameraSide;
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
@@ -71,355 +75,55 @@ glm::vec2 mouseChange;
 
 glm::quat odwrRotation;
 
-struct Particle {
-	glm::vec3 pos, speed;
-	float size, angle, weight;
-	float life; // Remaining life of the particle. if <0 : dead and unused.
-	float cameradistance; // *Squared* distance to the camera. if dead : -1.0f
-
-	bool operator<(const Particle& that) const {
-		// Sort in reverse order : far particles drawn first.
-		return this->cameradistance > that.cameradistance;
-	}
-};
-double lastTime = 0;
-
-const int MaxParticles = 1;
-Particle ParticlesContainer[MaxParticles];
-int ParticlesCount = 0;
-int LastUsedParticle = 0;
-
-int FindUnusedParticle() {
-
-	for (int i = LastUsedParticle; i < MaxParticles; i++) {
-		if (ParticlesContainer[i].life < 0) {
-			LastUsedParticle = i;
-			return i;
-		}
-	}
-
-	for (int i = 0; i < LastUsedParticle; i++) {
-		if (ParticlesContainer[i].life < 0) {
-			LastUsedParticle = i;
-			return i;
-		}
-	}
-	return 0;
-}
-
-void SortParticles() {
-	std::sort(&ParticlesContainer[0], &ParticlesContainer[MaxParticles]);
-}
-
-static const int NUM_ASTEROIDS = 10;
-glm::vec3 asteroidsPositions[NUM_ASTEROIDS];
-static const int NUM_CAMERA_POINTS = 10;
-glm::vec3 cameraKeyPoints[NUM_CAMERA_POINTS];
-
-void drawOnScreen(std::string str, GLfloat x, GLfloat y, GLfloat one=1.0f, GLfloat two=0.0f, GLfloat three=0.0f);
 void reset();
-void refuel();
-bool checkStation();
 
-class Spaceship
-{
-private:
-	int fuel;
-	int hp;
-	obj::Model model;
-
-public:
-	Spaceship() {
-		hp = 100;
-		fuel = 10000;
-		model = obj::loadModelFromFile("models/spaceship.obj");
-	}
-
-	void setModel(obj::Model model_)
-	{
-		model = model_;
-	}
-
-	obj::Model getModel()
-	{
-		return model;
-	}
-
-	void setFuel(int fuel_)
-	{
-		fuel = fuel_;
-	}
-
-	int getFuel()
-	{
-		return fuel;
-	}
-
-	void setHp(int hp_)
-	{
-		hp = hp_;
-	}
-
-	int getHp()
-	{
-		return hp;
-	}
-};
-
-class PlayerSpaceship : public Spaceship
-{
-private:
-	GLuint* textureId;
-	GLuint* normalmapId;
-	float angleSpeed = 0.1f;
-	float moveSpeed = 0.2f;
-
-public:
-	PlayerSpaceship()
-	{
-		textureId = &textureShip;
-		normalmapId = &textureShipN;
-	}
-
-	void movement(unsigned char key, int x, int y)
-	{
-		int checkHp = getHp();
-		int checkFuel = getFuel();
-		//std::cout << key << std::endl;
-		if (checkHp <= 0 || checkFuel <= 0)
-		{
-			angleSpeed = 0;
-			moveSpeed = 0;
-			if (key == 'r')
-			{
-				reset();
-				angleSpeed = 0.1f;
-				moveSpeed = 0.2f;
-			}
-			if (key == 'q')
-			{
-				exit(EXIT_SUCCESS);
-			}
-		}
-		if (checkStation())
-		{
-			if (key == 'r')
-			{
-				refuel();
-			}
-		}
-		switch (key)
-		{
-		case 'z': rotation = glm::angleAxis(angleSpeed, glm::vec3(0, 0, -1)) * rotation; break;
-		case 'x': rotation = glm::angleAxis(angleSpeed, glm::vec3(0, 0, 1)) * rotation; break;
-		case 'w': cameraPos += cameraDir * moveSpeed; fuelUpdate(); break;
-		case 's': cameraPos -= cameraDir * moveSpeed; fuelUpdate(); break;
-		case 'd': cameraPos += cameraSide * moveSpeed; fuelUpdate(); break;
-		case 'a': cameraPos -= cameraSide * moveSpeed; fuelUpdate(); break;
-		}
-	}
-
-	void setTextureId(GLuint textureId_)
-	{
-		textureId = &textureId_;
-	}
-
-	GLuint getTextureId()
-	{
-		return *textureId;
-	}
-
-	void setNormalmapId(GLuint normalmapId_)
-	{
-		normalmapId = &normalmapId_;
-	}
-
-	GLuint getNormalmapId()
-	{
-		return *normalmapId;
-	}
-
-	double fuelUpdate()
-	{
-		double heatHydrogen = 141.9*1000000, speed = 1.0, mass = 45000000, speeding = 1.0, howMuch, a, b;
-		float h = getHp();
-		float efficiency = glm::normalize(h);
-		int fuel = getFuel();
-		int fuel2 = fuel - 1;
-		setFuel(fuel2);
-		b = efficiency * heatHydrogen;
-		a = speed * mass * speeding;
-		howMuch = (a / b);
-		return fuel2; //pierwsze oddanie wersja uproszczona przy naciśnięciu 'w' paliwo się zmniejsza o 1
-	}
-
-	void shipPosition()
-	{
-		float root = cameraPos.x * cameraPos.x + cameraPos.y * cameraPos.y + cameraPos.z * cameraPos.z;
-		float root2= (cameraPos.x + 100)*(cameraPos.x + 100) + cameraPos.y * cameraPos.y + cameraPos.z * cameraPos.z;
-		if (sqrt(root)<=15 || sqrt(root2) <= 15)
-		{
-			int h = getHp(), h2;
-			int timeForFuel = round(t);
-			if ((timeForFuel % 1 == 0) && (whichSec != timeForFuel))
-			{
-				if (h == 0)
-				{
-					setHp(0);
-				}
-				else
-				{
-					h2 = h - 5;
-					setHp(h2);
-				}
-				whichSec = timeForFuel;
-			}
-			int h3 = getHp();
-			if (h3 <= 0)
-			{
-				std::string x = std::to_string(0);
-				drawOnScreen("GAMEOVER HP = 0", -0.2, 0.9);
-				drawOnScreen("Press R to restart or Q to close the game.", -0.5, 0.85);
-				drawOnScreen("HP: ", -0.5, -0.9);
-				drawOnScreen(x, -0.4, -0.9);
-			}
-			else
-			{
-				std::string x = std::to_string(h3);
-				drawOnScreen("THE SHIP IS TOO CLOSE TO THE SUN!", -0.45, 0.9);
-				drawOnScreen("HP: ", -0.5, -0.9);
-				drawOnScreen(x, -0.4, -0.9);
-			}
-		}
-		else if (sqrt(root) <= 25 || sqrt(root2) <= 25)
-		{
-			int h = getHp(), h2;
-			int timeForFuel = round(t);
-
-			if ((timeForFuel % 1 == 0) && (whichSec != timeForFuel))
-			{
-				if (h == 0)
-				{
-					setHp(0);
-				}
-				else 
-				{
-					h2 = h - 1;
-					setHp(h2);
-				}
-				whichSec = timeForFuel;
-			}
-
-			int h3 = getHp();
-
-			if (h3 <= 0)
-			{
-				std::string x = std::to_string(0);
-				drawOnScreen("GAMEOVER HP = 0", -0.2, 0.9);
-				drawOnScreen("Press R to restart or Q to close the game.", -0.4, 0.8);
-				drawOnScreen("HP: ", -0.5, -0.9);
-				drawOnScreen(x, -0.4, -0.9);
-			}
-			else
-			{
-				std::string x = std::to_string(h3);
-				drawOnScreen("THE SHIP IS TOO CLOSE TO THE SUN!", -0.45, 0.9);
-				drawOnScreen("HP: ", -0.5, -0.9);
-				drawOnScreen(x, -0.4, -0.9);
-			}
-		}
-		else
-		{
-			int h = getHp();
-			if (h == 0)
-			{
-				std::string x = std::to_string(0);
-				drawOnScreen("HP: ", -0.5, -0.9);
-				drawOnScreen(x, -0.4, -0.9);
-			}
-			else
-			{
-				std::string x = std::to_string(h);
-				drawOnScreen("HP: ", -0.5, -0.9);
-				drawOnScreen(x, -0.4, -0.9);
-			}
-		}
-	}
-};
-
-PlayerSpaceship player;
-PlayerSpaceship botShip;
-
-void refuel()
-{
-	player.setFuel(10000);
-}
-
-bool checkStation()
-{
-	float root = (cameraPos.x + 50) * (cameraPos.x + 50) + cameraPos.y * cameraPos.y + cameraPos.z * cameraPos.z;
-	//std::cout << sqrt(root) << std::endl;
-	if (sqrt(root) <= 4)
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-void drawOnScreen(std::string str, GLfloat x, GLfloat y, GLfloat one, GLfloat two, GLfloat three) //string napis do wyświetlenia
-													//x=0 y=0  środek układu współrzędnych/ekranu
-{                                                    //one, two, three floaty do kolorów
-	int len, i;
-	glColor3f(one, two, three); //kolor napisu
-	glRasterPos2f(x, y); //pozycja napisu
-	len = str.length();
-	for (i = 0; i < len; i++) {
-		glutBitmapCharacter(GLUT_BITMAP_9_BY_15, str[i]);
-	}
-}
-
-void drawOnScreenDigit(int digit, float x, float y)
-{
-	std::string s = std::to_string(digit);
-	drawOnScreen(s, x, y);
-}
+Player player;
+//Spaceship botShip;
 
 void keyboard(unsigned char key, int x, int y)
 {
-	player.movement(key, x, y);
+	int checkHp = player.getHp();
+	float checkFuel = player.getFuel();
+
+	float angleSpeed = player.getAngleSpeed(), moveSpeed = player.getMoveSpeed();
+	if (checkHp <= 0 || checkFuel <= 0)
+	{
+		player.setAngleSpeed(0);
+		player.setMoveSpeed(0);
+		if (key == 'r')
+		{
+			reset();
+			player.setAngleSpeed(0.1f);
+			player.setMoveSpeed(0.2f);
+		}
+		if (key == 'q')
+		{
+			exit(EXIT_SUCCESS);
+		}
+	}
+	if (player.checkStation(cameraPos))
+	{
+		if (key == 'r')
+		{
+			player.refuel();
+		}
+	}
+	
+	switch (key)
+	{
+	case 'z': rotation = glm::angleAxis(angleSpeed, glm::vec3(0, 0, -1)) * rotation; break;
+	case 'x': rotation = glm::angleAxis(angleSpeed, glm::vec3(0, 0, 1)) * rotation; break;
+	case 'w': cameraPos += cameraDir * moveSpeed; player.fuelUpdate(); break;
+	case 's': cameraPos -= cameraDir * moveSpeed; player.fuelUpdate(); break;
+	case 'd': cameraPos += cameraSide * moveSpeed; player.fuelUpdate(); break;
+	case 'a': cameraPos -= cameraSide * moveSpeed; player.fuelUpdate(); break;
+	}
 }
 
 void mouse(int x, int y)
 {
 	mouseChange = glm::vec2(x - mouseLast.x, y - mouseLast.y);
 	mouseLast = glm::vec2(x, y);
-}
-
-glm::mat4 getCatmullRomPath()
-{
-	float time = (glutGet(GLUT_ELAPSED_TIME) / 1000.f - appLoadingTime) / 8;
-	float dec;
-	float s = std::modf(time, &dec);
-	int j = (int)dec;
-	glm::vec3 v1, v2, v3, v4;
-	glm::vec3 shipPos;
-	glm::vec3 shipDir;
-
-	int n = NUM_CAMERA_POINTS;
-	v1 = cameraKeyPoints[(j - 1) % n];
-	v2 = cameraKeyPoints[(j) % n];
-	v3 = cameraKeyPoints[(j + 1) % n];
-	v4 = cameraKeyPoints[(j + 2) % n];
-
-	shipPos = glm::catmullRom(v1, v2, v3, v4, s);
-	shipDir = glm::normalize(glm::catmullRom(v1, v2, v3, v4, s + 0.001) - glm::catmullRom(v1, v2, v3, v4, s - 0.001));
-	shipAngle = atan2f(shipDir.z, shipDir.x);
-
-	glm::mat4 shipMatrix = glm::translate(shipPos) * glm::rotate(-shipAngle + glm::radians(90.0f), glm::vec3(0, 1, 0));
-	return shipMatrix;
 }
 
 glm::mat4 createCameraMatrix()
@@ -561,78 +265,6 @@ void drawSkybox(obj::Model* model)
 	glUseProgram(0);
 }
 
-void drawParticles()
-{
-	for (int i = 0; i < MaxParticles; i++) {
-		ParticlesContainer[i].life = -1.0f;
-		ParticlesContainer[i].cameradistance = -1.0f;
-	}
-
-	double delta = t - lastTime;
-	delta = 0.5;
-	lastTime = t;
-	int newparticles = (int)(1);
-
-	std::cout << ParticlesCount << std::endl;
-	for (int i = 0; i < newparticles; i++) {
-		if (ParticlesCount < MaxParticles)
-		{
-			int particleIndex = FindUnusedParticle();
-			ParticlesContainer[particleIndex].life = 2.0f;
-			ParticlesContainer[particleIndex].pos = glm::vec3(0);
-
-			float spread = 1.5f;
-			glm::vec3 maindir = glm::vec3(0.0f, 0.0f, 1.0f);
-			glm::vec3 randomdir = glm::vec3((rand() % 10 - 1.0f) / 50.0f, (rand() % 10 - 1.0f) / 100.0f, (rand() % 10 - 1.0f) / 50.0f);
-
-			//ParticlesContainer[particleIndex].speed = maindir + randomdir * spread;
-			ParticlesContainer[particleIndex].speed = maindir;
-
-			//ParticlesContainer[particleIndex].size = (rand() % 10) / 20000.0f + 0.05f;
-			ParticlesContainer[particleIndex].size = 0.05f;
-			std::cout << "Tworze czastke!" << std::endl;
-		}
-	}
-
-	// Simulate all particles
-	glUseProgram(programParticles);
-	ParticlesCount = 0;
-	for (int i = 0; i < MaxParticles; i++) {
-
-		Particle& p = ParticlesContainer[i]; // shortcut
-
-		if (p.life > 0.0f) {
-			p.life = p.life - delta;
-			//std::cout << p.life << std::endl;
-			if (p.life > 0.0f) {
-				//p.speed += glm::vec3(0.0f, 0.0f, 1.0f);
-				p.pos += p.speed;
-				std::cout << "x: " << p.pos.x << ", y: " << p.pos.y << ", z: " << p.pos.z << std::endl;
-				p.cameradistance = glm::length2(p.pos - cameraPos);
-
-				glm::mat4 modelMatrix = glm::translate(glm::vec3(p.pos.x, p.pos.y, p.pos.z)) * glm::scale(glm::vec3(p.size));
-
-				glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
-				glUniformMatrix4fv(glGetUniformLocation(program, "modelViewProjectionMatrix"), 1, GL_FALSE, (float*)&transformation);
-				
-				Core::DrawModel(&sphereModel);
-				ParticlesCount++;
-				//printf("Rysuje");
-			}
-			else {
-				// Particles that just died will be put at the end of the buffer in SortParticles();
-				p.cameradistance = -1.0f;
-			}
-			//ParticlesCount++;
-		}
-		ParticlesContainer[i] = p;
-	}
-	//std::cout << ParticlesCount << std::endl;
-	//SortParticles();
-
-	glUseProgram(0);
-}
-
 void renderScene()
 {
 	cameraMatrix = createCameraMatrix();
@@ -648,19 +280,13 @@ void renderScene()
 	glm::mat4 shipRotation = glm::mat4_cast(odwrRotation);
 	glm::mat4 shipInitialTransformation = glm::translate(glm::vec3(0, -0.25f, 0)) * glm::rotate(glm::radians(180.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
 	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f) * shipRotation * shipInitialTransformation;
-	playerShipPos = cameraPos + cameraDir * 0.5f * glm::vec3(0, -0.25f, 0);
+	//playerShipPos = cameraPos + cameraDir * 0.5f * glm::vec3(0, -0.25f, 0);
 
 	// Player's ship
-	drawShip(&player.getModel(), shipModelMatrix, player.getTextureId(), player.getNormalmapId());
-	//drawParticles();
-	
-	// Bot ship	jego trzeba zmienić na te nadrzędną klasę, ale tam w niej nie ma pola tekstury więc dałąm na razie PlayerSpaceship
-	glm::mat4 shipModelMatrixBot = getCatmullRomPath();
-	drawShip(&botShip.getModel(), shipModelMatrixBot, botShip.getTextureId(), botShip.getNormalmapId());
+	drawShip(&player.getModel(), shipModelMatrix, textureShip, textureShipN);
 
 	// Space Station
 	drawShip(&spaceStationModel, glm::eulerAngleY(t / 8) * glm::translate(glm::vec3(-25, 0, 0)) * glm::eulerAngleY(t) * glm::translate(glm::vec3(-5, 0, 0)) * glm::scale(glm::vec3(0.3f)), textureShip, textureShipN);
-	drawShip(&spaceStationModel, glm::translate(glm::vec3(-50, 0, 0)) * glm::eulerAngleY(t / 2) * glm::scale(glm::vec3(0.3f)), textureShip, textureShipN);
 
 	// Earth
 	drawObjectTextureN(&sphereModel, glm::eulerAngleY(t / 8) * glm::translate(glm::vec3(-25, 0, 0)) * glm::scale(glm::vec3(1.2f)), textureEarth, textureEarthN);
@@ -688,41 +314,29 @@ void renderScene()
 	// Sun
 	drawObjectTexture(&sphereModel, glm::translate(lightPos1) * glm::rotate((t / 32) * glm::radians(360.0f), glm::vec3(0.0f, 1.0f, 0.0f)) * glm::scale(glm::vec3(7.0f)), textureSun);
 	
-	// Second source of light aka another star; feel free to name it STEFCIO
+	// Second source of light - another star
 	drawObjectTexture(&sphereModel, glm::translate(lightPos2) * glm::rotate((t / 32) * glm::radians(360.0f), glm::vec3(0.0f, 1.0f, 0.0f)) * glm::scale(glm::vec3(6.0f)), textureStar);
 
-	// Asteroids
-	for (int i = 0; i < NUM_ASTEROIDS; i++)
-	{
-		if (i % 2 == 0)
-		{
-			drawObjectTextureN(&sphereModel, glm::eulerAngleXZ(-0.2f, 0.1f) * glm::eulerAngleY(t / 100) * glm::translate(asteroidsPositions[i]) * glm::scale(glm::vec3(0.5f)), textureAsteroid, textureAsteroidN);
-		}
-		else 
-		{
-			drawObjectTextureN(&sphereModel, glm::eulerAngleXZ(+0.2f, -0.1f) * glm::eulerAngleY(t / 100) * glm::translate(asteroidsPositions[i]) * glm::scale(glm::vec3(0.25f)), textureAsteroid, textureAsteroidN);
-			//nie wiem czy nie za ma�e te asteroidki ale wydaje mi si� �e s� do�� proporcjonalne do tych planet
-		}
-	}
-	
-	// Cokolwiek rysujecie, te atmosfery zawsze muszą być na samym końcu
 	// Earth's atmosphere
-	drawObjectAtmo(&sphereModel, glm::eulerAngleY(t / 8) * glm::translate(glm::vec3(-25, 0, 0)) * glm::scale(glm::vec3(1.4f)), glm::vec3(1.0, 1.0, 1.0), 0.8);
+	//drawObjectAtmo(&sphereModel, glm::eulerAngleY(t / 8) * glm::translate(glm::vec3(-25, 0, 0)) * glm::scale(glm::vec3(1.3f)), glm::vec3(1.0, 1.0, 1.0), 0.8);
 
-	drawOnScreen("fuel: ", -0.98, -0.9);
-	int f = player.getFuel();
-	std::string fuelString = std::to_string(f);
-	drawOnScreen(fuelString, -0.8, -0.9); //wysiwetlanie ilosci paliwa na ekranie
-	player.shipPosition();
+	// HUD
+	writeOnScreen("Fuel: ", -0.98, -0.9);
+	float f = player.getFuel() / player.getMaxFuel();
+	std::string fuel = std::to_string(f * 100) + "%";
+	writeOnScreen(fuel, -0.85, -0.9);
+	
+	player.shipPosition(cameraPos, t);
+	
 	int timeFuel = round(t);
 	if ((timeFuel % 1 == 0) && (whichSec2 != timeFuel))
 	{
 		whichSec2 = timeFuel;
 		player.fuelUpdate();
 	}
-	if (checkStation())
+	if (player.checkStation(cameraPos))
 	{
-		drawOnScreen("Press 'r' to refuel", 0.5, -0.9);
+		writeOnScreen("Press 'r' to refuel", 0.5, -0.9);
 	}
 
 	glutSwapBuffers();
@@ -775,18 +389,6 @@ void init()
 	shipModel = obj::loadModelFromFile("models/spaceship.obj");
 	spaceStationModel = obj::loadModelFromFile("models/spaceStattion.obj");
 
-	// asteroids positions
-	float R = 150.0;
-	for (int i = 0; i < NUM_ASTEROIDS; i++)
-	{
-		asteroidsPositions[i] = glm::ballRand(R);
-	}
-	
-	for (int i = 0; i < NUM_CAMERA_POINTS; i++)
-	{
-		cameraKeyPoints[i] = glm::sphericalRand(40.0);
-		//std::cout << cameraKeyPoints[i].x << " " << cameraKeyPoints[i].y << std::endl;
-	}
 	appLoadingTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
 }
 
